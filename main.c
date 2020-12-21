@@ -1,12 +1,18 @@
-/*
+
 #include <stdio.h>
+
+/*
 #include <stddef.h>
 #include <stdint.h>
 */
 
+
+#include <graphics/gfxbase.h>
+
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <proto/intuition.h>
 
 /* extern int test(void); */
 
@@ -37,40 +43,76 @@ void LoadCopperList(const struct CopperLists* copperlists) {
 
 */
 
+//#define printf(x) Write(Output(), x, sizeof(x))
+
+// Global variables as they are accessed from outside
+//struct Library *SysBase;
+struct GfxBase *GfxBase = NULL;
+struct IntuitionBase *IntuitionBase = NULL;
+
+// Already opened using startup.o
+//struct DosLibrary *DOSBase = NULL;
+
+extern struct ExecBase *SysBase;
+
 int main(void) {
+    APTR active_view;
+    APTR copperlist1;
+    APTR copperlist2;
     const char *graphics_library = "graphics.library";
-    const char *dos_library = "dos.library";
-    struct Library *SysBase;
-    struct GfxBase *gfx_base = NULL;
-    struct DosLibrary *dos_base = NULL;
+    //const char *dos_library = "dos.library";
+    const char *intuition_library = "intuition.library";
+    //struct Library *SysBase;
 
-    SysBase = *((struct Library **)4L);
+    SysBase = *((struct ExecBase **)4L);
 
-    dos_base = (struct DosLibrary *)OpenLibrary(dos_library, 0);
-    if (dos_base == NULL) {
-        Write(Output(), "Hello, world!", 14);
+    //int *test = 4L;
+
+    // DOSBase = (struct DosLibrary *)OpenLibrary(dos_library, 0);
+    // if (DOSBase == NULL) {
+    //     printf("Error opening dos library. Exiting.");
+    //     goto exit;
+    // }
+
+    GfxBase = (struct GfxBase *)OpenLibrary(graphics_library, 0);
+    if (GfxBase == NULL) {
+        printf("Error opening graphics library. Exiting.");
         goto exit;
     }
 
-    gfx_base = (struct GfxBase *)OpenLibrary(graphics_library, 0);
-    if (gfx_base == NULL) {
-        Write(Output(),"Hello, world!\n", 14); 
-        /* printf("Error opening graphics library\n"); */
+    IntuitionBase = (struct IntuitionBase *)OpenLibrary(intuition_library, 0);
+    if (IntuitionBase == NULL) {
+        printf("Error opening intuition library. Exiting.");
         goto exit;
     }
+
+    //printf("test: %x\n", test);
+
+    active_view = GfxBase->ActiView;
+    copperlist1 = GfxBase->copinit;
+    copperlist2 = GfxBase->LOFlist;
+
+    LoadView(NULL);
+
+    WaitTOF();
+    WaitTOF();
+
+    //custom->cop1lc = (ULONG)oldCopinit;
+
+    LoadView((struct View *)active_view);
+
+    WaitTOF();
+    WaitTOF();
+
+    RethinkDisplay();
     
-    /*
-    result = test();
-
-    printf("Hello World: %i\n", result);
-    */
 exit:
-    if (gfx_base) {
-        CloseLibrary((struct Library *)gfx_base);
+    if (IntuitionBase) {
+        CloseLibrary((struct Library *)IntuitionBase);
     }
 
-    if (dos_base) {
-        CloseLibrary((struct Library *)dos_base);
+    if (GfxBase) {
+        CloseLibrary((struct Library *)GfxBase);
     }
 
     return 0;
